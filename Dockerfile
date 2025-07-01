@@ -1,30 +1,31 @@
-
+# Use official Python base image
 FROM python:3.13-slim
 
-# Install basic troubleshooting tools
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
-    curl \
-    jq \
-    iputils-ping \
-    net-tools \
-    dnsutils \
-    && rm -rf /var/lib/apt/lists/*
+    netcat-openbsd curl && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user and group
-RUN groupadd -r flaskuser && useradd -r -g flaskuser flaskuser
+# Create non-root user
+RUN useradd -u 1001 -r -s /sbin/nologin flask-user
 
-# Create application directory and set permissions
+
+# Set workdir
 WORKDIR /app
+
+# Copy requirements and install
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy app code and templates
 COPY . .
 
-# Change ownership of the application directory
-RUN chown -R flaskuser:flaskuser /app
 
 # Switch to non-root user
-USER flaskuser
+USER 1001
 
+# Expose Flask port
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+# Unbuffered output for K8s logs
+CMD ["python", "-u", "app.py"]
