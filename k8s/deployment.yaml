@@ -11,10 +11,16 @@ spec:
     metadata:
       labels:
         app: flask-login
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: flask-sa
       imagePullSecrets:
       - name: ecr-secret
+      nodeSelector:
+        kubernetes.io/hostname: minikube
       initContainers:
       - name: wait-for-mysql
         image: busybox
@@ -29,18 +35,18 @@ spec:
             name: flask-config
         - secretRef:
             name: flask-secrets
-        readinessProbe:
-          httpGet:
-            path: /login
-            port: 5000
-          initialDelaySeconds: 10
-          periodSeconds: 5
         livenessProbe:
           httpGet:
             path: /login
             port: 5000
           initialDelaySeconds: 15
           periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /login
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
         resources:
           limits:
             memory: "256Mi"
@@ -51,6 +57,22 @@ spec:
         securityContext:
           runAsUser: 1001
           runAsNonRoot: true
+        volumeMounts:
+        - name: log-volume
+          mountPath: /var/log/flask
       - name: sidecar-logger
         image: busybox
         command: ["sh", "-c", "tail -n+1 -F /var/log/flask/app.log"]
+        resources:
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+        volumeMounts:
+        - name: log-volume
+          mountPath: /var/log/flask
+      volumes:
+      - name: log-volume
+        emptyDir: {}

@@ -1,13 +1,24 @@
 from flask import Flask, request, redirect, url_for, render_template, session
 import mysql.connector
 from werkzeug.security import generate_password_hash, check_password_hash
+from prometheus_flask_exporter import PrometheusMetrics
+import logging
 import os
 import time
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a secure value in production
 
-# DB configuration from environment variables
+# === Prometheus Metrics ===
+metrics = PrometheusMetrics(app)
+
+# === File Logger Setup ===
+os.makedirs("/app/logs", exist_ok=True)
+logging.basicConfig(filename='/app/logs/app.log',
+                    level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# === DB Configuration from Environment Variables ===
 db_config = {
     'host': os.environ.get("DB_HOST", "localhost"),
     'user': os.environ.get("DB_USER", "root"),
@@ -47,8 +58,10 @@ def init_db(retries=5, delay=5):
 init_db()
 
 # === Routes ===
+
 @app.route('/')
 def root():
+    logging.info("Redirected to login page")
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -62,7 +75,9 @@ def register():
             cursor = conn.cursor()
             cursor.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", (username, password))
             conn.commit()
+            logging.info(f"User registered: {username}")
         except mysql.connector.Error as err:
+            logging.error(f"Registration error: {err}")
             return f"Error: {err}"
         finally:
             cursor.close()
@@ -89,20 +104,28 @@ def login():
 
         if result and check_password_hash(result[0], password):
             session['username'] = username
+            logging.info(f"Login successful: {username}")
             return redirect(url_for('dashboard'))
+        else:
+            logging.warning(f"Login failed for user: {username}")
 
     return render_template("login.html")
 
 @app.route('/dashboard')
 def dashboard():
     if 'username' in session:
+        logging.info(f"Accessed dashboard: {session['username']}")
         return render_template("dashboard.html", username=session['username'])
     return redirect(url_for('login'))
 
 @app.route('/logout')
 def logout():
+    username = session.get('username', 'unknown')
     session.pop('username', None)
+    logging.info(f"User logged out: {username}")
     return redirect(url_for('login'))
+
+# === Prometheus endpoint is auto-mounted at /metrics ===
 
 # === Start Server ===
 if __name__ == '__main__':
