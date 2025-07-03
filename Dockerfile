@@ -8,18 +8,18 @@ RUN apt-get update && apt-get install -y \
 # Create non-root user
 RUN useradd -u 1001 -r -s /sbin/nologin flask-user
 
-
 # Set workdir
 WORKDIR /app
 
 # Copy requirements and install
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy app code and templates
 COPY . .
 
+# Ensure log directory exists (optional, since K8s mounts it)
+RUN mkdir -p /var/log/flask && chown -R 1001:1001 /var/log/flask
 
 # Switch to non-root user
 USER 1001

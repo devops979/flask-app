@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: flask-login-app
 spec:
-  replicas: 3
+  replicas: 7
   selector:
     matchLabels:
       app: flask-login
@@ -17,17 +17,24 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: flask-sa
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: flask-node
+                    operator: In
+                    values:
+                      - enabled
       imagePullSecrets:
       - name: ecr-secret
-      nodeSelector:
-        kubernetes.io/hostname: minikube
       initContainers:
       - name: wait-for-mysql
         image: busybox
         command: ['sh', '-c', 'until nc -z mysql 3306; do echo waiting for mysql; sleep 2; done;']
       containers:
       - name: flask-app
-        image: 211125325699.dkr.ecr.us-east-1.amazonaws.com/flask-app:v3
+        image: 211125325699.dkr.ecr.us-east-1.amazonaws.com/flask-app:v5
         ports:
         - containerPort: 5000
         envFrom:
@@ -50,7 +57,7 @@ spec:
         resources:
           limits:
             memory: "256Mi"
-            cpu: "500m"
+            cpu: "250m"
           requests:
             memory: "128Mi"
             cpu: "250m"

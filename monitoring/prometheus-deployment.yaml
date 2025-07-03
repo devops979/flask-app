@@ -18,7 +18,7 @@ spec:
       serviceAccountName: prometheus
       containers:
       - name: prometheus
-        image: prom/prometheus:latest
+        image: prom/prometheus:v2.53.5
         ports:
         - containerPort: 9090
         args:
@@ -30,7 +30,11 @@ spec:
           - '--web.enable-lifecycle'
         volumeMounts:
         - name: prometheus-config-volume
-          mountPath: /etc/prometheus/
+          mountPath: /etc/prometheus/prometheus.yml
+          subPath: prometheus.yml
+        - name: prometheus-config-volume
+          mountPath: /etc/prometheus/rules.yml
+          subPath: rules.yml
         - name: prometheus-storage-volume
           mountPath: /prometheus/
         resources:
@@ -43,7 +47,6 @@ spec:
       volumes:
       - name: prometheus-config-volume
         configMap:
-          defaultMode: 420
           name: prometheus-config
       - name: prometheus-storage-volume
         emptyDir: {}
@@ -102,3 +105,4 @@ subjects:
 - kind: ServiceAccount
   name: prometheus
   namespace: monitoring
+

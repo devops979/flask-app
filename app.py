@@ -13,8 +13,8 @@ app.secret_key = 'your_secret_key'  # Replace with a secure value in production
 metrics = PrometheusMetrics(app)
 
 # === File Logger Setup ===
-os.makedirs("/app/logs", exist_ok=True)
-logging.basicConfig(filename='/app/logs/app.log',
+os.makedirs("/var/log/flask", exist_ok=True)
+logging.basicConfig(filename='/var/log/flask/app.log',
                     level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
